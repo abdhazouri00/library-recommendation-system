@@ -200,22 +200,22 @@ Use this checklist to track your progress through the 4-week project.
 
 ### AI Recommendations
 
-- [ ] Go to AWS Bedrock Console
-- [ ] Click "Model access"
-- [ ] Request access to Claude 3 Haiku
-- [ ] Wait for approval (usually instant)
-- [ ] Create Lambda: `library-get-recommendations`
-- [ ] Set timeout to 30 seconds
-- [ ] Add Bedrock permissions to Lambda role
-- [ ] Deploy recommendations code (see IMPLEMENTATION_GUIDE.md)
-- [ ] Test Lambda with sample query
-- [ ] Create API Gateway resource: `/recommendations`
-- [ ] Create POST method
-- [ ] Add Cognito authorizer
-- [ ] Enable CORS
-- [ ] Deploy API
+- [✅] Go to AWS Bedrock Console
+- [✅] Click "Model access"
+- [✅] Request access to Claude 3 Haiku
+- [✅] Wait for approval (usually instant)
+- [✅] Create Lambda: `library-get-recommendations`
+- [✅] Set timeout to 30 seconds
+- [✅] Add Bedrock permissions to Lambda role
+- [✅] Deploy recommendations code (see IMPLEMENTATION_GUIDE.md)
+- [✅] Test Lambda with sample query
+- [✅] Create API Gateway resource: `/recommendations`
+- [✅] Create POST method
+- [✅] Add Cognito authorizer
+- [✅] Enable CORS
+- [✅] Deploy API
 
-- [ ] Update `src/services/api.ts`
+- [✅] Update `src/services/api.ts`
 - [ ] Update `getRecommendations()` function signature to accept query
 - [ ] Replace mock code with real API call
 - [ ] Update `src/pages/Recommendations.tsx` to pass query to API
@@ -227,45 +227,45 @@ Use this checklist to track your progress through the 4-week project.
 
 **Step 1: Create S3 Bucket and CloudFront**
 
-- [ ] Go to S3 Console
-- [ ] Create bucket: `library-app-frontend-[your-name]`
-- [ ] Uncheck "Block all public access"
-- [ ] Enable static website hosting
+- [✅] Go to S3 Console
+- [✅] Create bucket: `library-app-frontend-[your-name]`
+- [✅] Uncheck "Block all public access"
+- [✅] Enable static website hosting
   - Index document: `index.html`
   - Error document: `index.html`
-- [ ] Add bucket policy for public read access
-- [ ] Go to CloudFront Console
-- [ ] Create distribution
+- [✅] Add bucket policy for public read access
+- [✅] Go to CloudFront Console
+- [✅] Create distribution
   - Origin: Your S3 bucket
   - Redirect HTTP to HTTPS
   - Default root object: `index.html`
-- [ ] Wait for CloudFront deployment (10-15 minutes)
-- [ ] Update CORS in API Gateway to allow CloudFront URL
+- [✅] Wait for CloudFront deployment (10-15 minutes)
+- [✅] Update CORS in API Gateway to allow CloudFront URL
 
 **Step 2: Set Up CI/CD Pipeline with CodePipeline**
 
-- [ ] Go to CodePipeline Console
-- [ ] Create new pipeline: `library-frontend-pipeline`
-- [ ] Configure source stage:
+- [✅] Go to CodePipeline Console
+- [✅] Create new pipeline: `library-frontend-pipeline`
+- [✅] Configure source stage:
   - Source provider: GitHub (Version 2)
   - Connect to GitHub account
   - Select your repository: `library-recommendation-system`
   - Branch: `main`
   - Change detection: GitHub webhooks
-- [ ] Configure build stage:
+- [✅] Configure build stage:
   - Build provider: AWS CodeBuild
   - Create new build project: `library-frontend-build`
   - Environment: Managed image, Ubuntu, Standard runtime, Latest image
   - Service role: Create new service role
-- [ ] Configure deploy stage:
+- [✅] Configure deploy stage:
   - Deploy provider: Amazon S3
   - Bucket: Your S3 bucket name
   - Extract files before deploy: Yes
-- [ ] Review and create pipeline
+- [✅] Review and create pipeline
 
 **Step 3: Create buildspec.yml**
 
-- [ ] Create `buildspec.yml` in project root with:
+- [✅] Create `buildspec.yml` in project root with:
 
 ```yaml
 version: 0.2
@@ -284,7 +284,7 @@ artifacts:
   base-directory: dist
 ```
 
-- [ ] Commit and push buildspec.yml to GitHub
+- [✅] Commit and push buildspec.yml to GitHub
 - [ ] Watch pipeline execute automatically
 - [ ] Verify build succeeds
 - [ ] Verify deployment to S3

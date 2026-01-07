@@ -48,6 +48,13 @@ export interface Recommendation {
   confidence: number;
 }
 
+export interface BookRecommendation {
+  title: string;
+  author: string;
+  reason: string;
+  confidence: number;
+}
+
 export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;

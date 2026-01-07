@@ -746,7 +746,7 @@ Respond in JSON format:
   }
 };
 ```
-
+ 
 5. **Add to API Gateway**:
    - Create resource: `/recommendations`
    - Create method: `POST`
