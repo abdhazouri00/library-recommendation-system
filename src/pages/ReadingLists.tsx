@@ -4,10 +4,11 @@ import { Modal } from '@/components/common/Modal';
 import { Input } from '@/components/common/Input';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { getReadingLists, createReadingList, deleteReadingList } from '@/services/api';
-import { ReadingList } from '@/types';
+import { Book, ReadingList } from '@/types';
 import { formatDate } from '@/utils/formatters';
 import { handleApiError, showSuccess } from '@/utils/errorHandling';
 import { useAuth } from '@/hooks/useAuth';
+import { getBooks, updateReadingList } from '@/services/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
 
 /**
@@ -20,10 +21,33 @@ export function ReadingLists() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [newListDescription, setNewListDescription] = useState('');
+  const [selectedList, setSelectedList] = useState<ReadingList | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [books, setBooks] = useState<Book[]>([]);
 
   useEffect(() => {
     loadLists();
   }, []);
+
+  useEffect(() => {
+    const loadBooks = async () => {
+      try {
+        const lists = await getBooks();
+
+        setBooks(lists);
+        console.log(lists);
+      } catch (error) {
+        console.error('Failed to load lists:', error);
+      }
+    };
+
+    loadBooks();
+  }, []);
+
+  const handleViewList = (list: ReadingList) => {
+    setSelectedList(list);
+    setIsViewModalOpen(true);
+  };
 
   const loadLists = async () => {
     setIsLoading(true);
@@ -35,6 +59,26 @@ export function ReadingLists() {
       handleApiError(error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRemoveBook = async (bookId: string) => {
+    if (!selectedList) return;
+
+    const updatedBookIds = selectedList.bookIds.filter((id) => id !== bookId);
+
+    try {
+      const updatedList = await updateReadingList(selectedList.id, {
+        name: selectedList.name,
+        bookIds: updatedBookIds,
+      });
+
+      setSelectedList(updatedList);
+      setLists(lists.map((l) => (l.id === updatedList.id ? updatedList : l)));
+
+      showSuccess('Book removed from list');
+    } catch (error) {
+      handleApiError(error);
     }
   };
 
@@ -69,6 +113,7 @@ export function ReadingLists() {
     if (!window.confirm('Delete this list?')) return;
 
     try {
+      console.log(listId);
       await deleteReadingList(listId);
 
       setLists(lists.filter((l) => l.id !== listId));
@@ -76,6 +121,11 @@ export function ReadingLists() {
     } catch (error) {
       handleApiError(error);
     }
+  };
+
+  const getBookName = (bookId: string) => {
+    const book = books.find((b) => b.id === bookId);
+    return book ? book.title : 'Unknown Book';
   };
 
   if (isLoading) {
@@ -127,6 +177,7 @@ export function ReadingLists() {
             {lists.map((list) => (
               <div
                 key={list.id}
+                onClick={() => handleViewList(list)}
                 className="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-xl hover:border-blue-300 transition-all duration-300 cursor-pointer"
               >
                 <h3 className="text-xl font-bold text-slate-900 mb-2">{list.name}</h3>
@@ -179,6 +230,65 @@ export function ReadingLists() {
           </div>
         </Modal>
       </div>
+      <Modal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        title={selectedList?.name || 'Reading List'}
+      >
+        <div className="space-y-4">
+          <p className="text-slate-600 mb-4">{selectedList?.description}</p>
+          <h4 className="font-bold text-slate-900 border-b pb-2">Books in this list:</h4>
+
+          {selectedList?.bookIds && selectedList.bookIds.length > 0 ? (
+            <ul className="divide-y divide-slate-100 max-h-60 overflow-y-auto">
+              {selectedList.bookIds.map((bookId, index) => {
+                // ✅ Find the full book object from your 'books' array
+                const bookDetails = books.find((b) => b.id === bookId);
+
+                return (
+                  <li key={index} className="py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      {bookDetails?.coverImage && (
+                        <img
+                          src={bookDetails.coverImage}
+                          className="w-8 h-10 object-cover rounded shadow-sm"
+                          alt=""
+                        />
+                      )}
+                      <div>
+                        <p className="text-slate-900 font-semibold">
+                          {bookDetails ? bookDetails.title : `ID: ${bookId}`}
+                        </p>
+                        {bookDetails && (
+                          <p className="text-xs text-slate-500">by {bookDetails.author}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ✅ Delete Button */}
+                    <button
+                      onClick={() => handleRemoveBook(bookId)}
+                      className="text-red-500 hover:text-red-700 text-sm font-medium transition-colors p-2"
+                    >
+                      Remove
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-slate-500 italic py-4">This list is empty.</p>
+          )}
+
+          <Button
+            variant="secondary"
+            onClick={() => setIsViewModalOpen(false)}
+            className="w-full mt-4"
+          >
+            Close
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

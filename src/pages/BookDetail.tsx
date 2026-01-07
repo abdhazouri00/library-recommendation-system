@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/common/Button';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { getBook } from '@/services/api';
+import { getBook, getReadingLists, updateReadingList } from '@/services/api';
 import { Book } from '@/types';
 import { formatRating } from '@/utils/formatters';
 import { handleApiError } from '@/utils/errorHandling';
 import { fetchAuthSession } from 'aws-amplify/auth';
+import { ReadingList } from '@/types';
 
 /**
  * BookDetail page component
@@ -17,6 +18,9 @@ export function BookDetail() {
   const [book, setBook] = useState<Book | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [readingLists, setReadingLists] = useState<ReadingList[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedListId, setSelectedListId] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -24,6 +28,21 @@ export function BookDetail() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    const loadBooks = async () => {
+      try {
+        const lists = await getReadingLists();
+
+        setReadingLists(lists);
+        // console.log(lists);
+      } catch (error) {
+        console.error('Failed to load lists:', error);
+      }
+    };
+
+    loadBooks();
+  }, []);
 
   const loadBook = async (bookId: string) => {
     setIsLoading(true);
@@ -43,17 +62,33 @@ export function BookDetail() {
 
   // TODO: Implement add to reading list functionality
   const handleAddToList = () => {
-    alert('Add to reading list functionality coming soon!');
+    setIsModalOpen(true);
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
+  const handleConfirmAdd = async () => {
+    if (!selectedListId || !book) return;
 
+    setIsUpdating(true);
+    try {
+      const targetList = readingLists.find((l) => l.id === selectedListId);
+      if (!targetList) return;
+
+      const updatedBookIds = [...(targetList.bookIds || []), book.id];
+
+      await updateReadingList(selectedListId, {
+        bookIds: updatedBookIds,
+        name: targetList.name,
+      });
+
+      alert('✅ Book added!');
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      alert('❌ Error adding book');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
   if (!book) {
     return null;
   }
@@ -215,6 +250,43 @@ export function BookDetail() {
           </div>
         </div>
       </div>
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-200">
+            <h3 className="text-2xl font-bold text-slate-900 mb-4">Add to Reading List</h3>
+            <p className="text-slate-600 mb-6">
+              Which list should we add <strong>{book.title}</strong> to?
+            </p>
+
+            <select
+              className="w-full p-3 rounded-xl border border-slate-200 mb-6 focus:ring-2 focus:ring-violet-500 outline-none text-slate-900"
+              value={selectedListId}
+              onChange={(e) => setSelectedListId(e.target.value)}
+            >
+              <option value="">-- Choose a list --</option>
+              {readingLists.map((list) => (
+                <option key={list.id} value={list.id}>
+                  {list.name}
+                </option>
+              ))}
+            </select>
+
+            <div className="flex gap-3">
+              <Button
+                variant="primary"
+                className="flex-1"
+                onClick={handleConfirmAdd}
+                disabled={!selectedListId || isUpdating}
+              >
+                {isUpdating ? 'Adding...' : 'Confirm'}
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setIsModalOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

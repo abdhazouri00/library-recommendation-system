@@ -148,6 +148,8 @@ export async function updateReadingList(
 export async function deleteReadingList(id: string): Promise<boolean> {
   const headers = await getAuthHeaders();
 
+  console.log(headers);
+
   const response = await fetch(`${API_BASE_URL}/reading-lists/${id}`, {
     method: 'DELETE',
     headers,
