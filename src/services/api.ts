@@ -1,24 +1,26 @@
 import { Book, ReadingList, Review, Recommendation } from '@/types';
-import { mockBooks, mockReadingLists } from './mockData';
 import { fetchAuthSession } from 'aws-amplify/auth';
 
 // started editing by mohanad
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-async function getAuthHeaders() {
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
   try {
     const session = await fetchAuthSession();
     const token = session.tokens?.idToken?.toString();
-    return {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
   } catch {
-    return {
-      'Content-Type': 'application/json',
-    };
+    // ignore
   }
+
+  return headers;
 }
 
 // Update getBooks function:
@@ -53,6 +55,89 @@ export async function getRecommendations(query: string): Promise<Recommendation[
   const data = await response.json();
   return data.recommendations;
 }
+
+
+export async function createBook(book: Omit<Book, 'id'>): Promise<Book> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_BASE_URL}/books`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(book),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to create book');
+  }
+
+  return response.json();
+}
+
+
+
+export async function updateBook(id: string, book: Partial<Book>): Promise<Book> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_BASE_URL}/books/${id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(book),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update book');
+  }
+
+  return response.json();
+}
+
+
+export async function deleteBook(id: string): Promise<void> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${API_BASE_URL}/books/${id}`, {
+    method: 'DELETE',
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete book');
+  }
+}
+
+
+export async function getReviews(bookId: string): Promise<Review[]> {
+  const response = await fetch(`${API_BASE_URL}/books/${bookId}/reviews`);
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch reviews');
+  }
+
+  return response.json();
+}
+
+export async function createReview(
+  review: Omit<Review, 'id' | 'createdAt'>
+): Promise<Review> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(
+    `${API_BASE_URL}/books/${review.bookId}/reviews`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(review),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to create review');
+  }
+
+  return response.json();
+}
+
+
 //end mohanad editing 
 
 
@@ -164,13 +249,10 @@ export async function getRecommendations(query: string): Promise<Recommendation[
  * Expected response: Single Book object or null if not found
  */
 export async function getBook(id: string): Promise<Book | null> {
-  // TODO: Remove this mock implementation after deploying Lambda
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const book = mockBooks.find((b) => b.id === id);
-      resolve(book || null);
-    }, 300);
-  });
+  const response = await fetch(`${API_BASE_URL}/books/${id}`);
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error('Failed to fetch book');
+  return response.json();
 }
 
 /**
@@ -195,48 +277,19 @@ export async function getBook(id: string): Promise<Book | null> {
  *
  * Note: This endpoint requires admin role in Cognito
  */
-export async function createBook(book: Omit<Book, 'id'>): Promise<Book> {
-  // TODO: Remove this mock implementation after deploying Lambda
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const newBook: Book = {
-        ...book,
-        id: Date.now().toString(),
-      };
-      resolve(newBook);
-    }, 500);
-  });
-}
+
 
 /**
  * Update an existing book (admin only)
  * TODO: Replace with PUT /books/:id API call
  */
-export async function updateBook(id: string, book: Partial<Book>): Promise<Book> {
-  // Mock implementation
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const existingBook = mockBooks.find((b) => b.id === id);
-      const updatedBook: Book = {
-        ...existingBook!,
-        ...book,
-        id,
-      };
-      resolve(updatedBook);
-    }, 500);
-  });
-}
+
 
 /**
  * Delete a book (admin only)
  * TODO: Replace with DELETE /books/:id API call
  */
-export async function deleteBook(): Promise<void> {
-  // Mock implementation
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(), 300);
-  });
-}
+
 
 /**
  * Get AI-powered book recommendations using Amazon Bedrock
@@ -289,10 +342,10 @@ export async function deleteBook(): Promise<void> {
  * Expected response: Array of ReadingList objects for the authenticated user
  */
 export async function getReadingLists(): Promise<ReadingList[]> {
-  // TODO: Remove this mock implementation after deploying Lambda
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(mockReadingLists), 500);
-  });
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE_URL}/reading-lists`, { headers });
+  if (!response.ok) throw new Error('Failed to fetch reading lists');
+  return response.json();
 }
 
 /**
@@ -328,69 +381,36 @@ export async function updateReadingList(
   id: string,
   list: Partial<ReadingList>
 ): Promise<ReadingList> {
-  // Mock implementation
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const existingList = mockReadingLists.find((l) => l.id === id);
-      const updatedList: ReadingList = {
-        ...existingList!,
-        ...list,
-        id,
-        updatedAt: new Date().toISOString(),
-      };
-      resolve(updatedList);
-    }, 500);
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE_URL}/reading-lists/${id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(list),
   });
+  if (!response.ok) throw new Error('Failed to update reading list');
+  return response.json();
 }
 
 /**
  * Delete a reading list
  * TODO: Replace with DELETE /reading-lists/:id API call
  */
-export async function deleteReadingList(): Promise<void> {
-  // Mock implementation
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(), 300);
+export async function deleteReadingList(id: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE_URL}/reading-lists/${id}`, {
+    method: 'DELETE',
+    headers,
   });
+  if (!response.ok) throw new Error('Failed to delete reading list');
 }
 
 /**
  * Get reviews for a book
  * TODO: Replace with GET /books/:id/reviews API call
  */
-export async function getReviews(bookId: string): Promise<Review[]> {
-  // Mock implementation
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const mockReviews: Review[] = [
-        {
-          id: '1',
-          bookId,
-          userId: '1',
-          rating: 5,
-          comment: 'Absolutely loved this book! A must-read.',
-          createdAt: '2024-11-01T10:00:00Z',
-        },
-      ];
-      resolve(mockReviews);
-    }, 500);
-  });
-}
+
 
 /**
  * Create a new review
  * TODO: Replace with POST /books/:bookId/reviews API call
  */
-export async function createReview(review: Omit<Review, 'id' | 'createdAt'>): Promise<Review> {
-  // Mock implementation
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const newReview: Review = {
-        ...review,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-      };
-      resolve(newReview);
-    }, 500);
-  });
-}
